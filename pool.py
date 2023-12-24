@@ -31,7 +31,6 @@ class SingletonState:
     pool_puzzle_hash: bytes32
     relative_lock_height: uint32
     minimum_difficulty: uint64
-    maximum_difficulty: uint64
     escaping: bool
     blockchain_height: uint32
     singleton_coin_id: bytes32
@@ -57,10 +56,8 @@ class Pool:
 
         # TODO: potentially teak these numbers for security and performance
         self.pool_url = "https://spacepoolx.com"
-        # 100 difficulty is about 1 proof a day per plot
-        self.min_difficulty = uint64(100)
-        self.default_difficulty: uint64(100)
-        self.max_difficulty = uint64(1000)
+        self.min_difficulty = uint64(10)  # 10 difficulty is about 1 proof a day per plot
+        self.default_difficulty: uint64 = uint64(10)
 
         # TODO: store this information in a persistent DB
         # Points are added by submitting partials
@@ -220,7 +217,6 @@ class Pool:
             self.default_pool_puzzle_hash,
             self.relative_lock_height,
             self.min_difficulty,
-            self.max_difficulty,
             False,
         )
 
@@ -230,11 +226,10 @@ class Pool:
         return p2_singleton_full.get_tree_hash()
 
     async def process_partial(self, partial: SubmitPartial, time_received_partial: uint64, balance: uint64, curr_difficulty: uint64) -> Dict:
-        if partial.payload.difficulty < self.min_difficulty or partial.payload.difficulty > self.max_difficulty:
+        if partial.payload.difficulty < self.min_difficulty:
             return {
                 "error_code": PoolErr.INVALID_DIFFICULTY,
-                "error_message": f"Invalid difficulty {partial.payload.difficulty}. minimum: {self.min_difficulty} "
-                                 f"maximum {self.max_difficulty}",
+                "error_message": f"Invalid difficulty {partial.payload.difficulty}. minimum: {self.min_difficulty} ",
                 "points_balance": balance,
                 "curr_difficulty": curr_difficulty,
             }
