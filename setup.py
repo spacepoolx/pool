@@ -15,7 +15,7 @@ setup(
     version="2.1",
     author="zebedaios.li",
     author_email="zebedaios.li@gmail.com",
-    description=("A refrence pool for the Chia blockchain."),
+    description=("A reference pool for the Chia blockchain."),
     license="Apache",
     packages=setuptools.find_packages(),
     install_requires=["wheel", "chia-blockchain", "Flask"],
