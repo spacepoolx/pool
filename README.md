@@ -1,3 +1,5 @@
+This prototoype is not yet supported and is still in development.
+
 ### Minimum difficulty
 
 ### Collecting pool rewards
@@ -14,3 +16,8 @@ There is a configurable parameter: `max_additions_per_transaction`. After adding
 the pool members' points are all reset to zero. This logic can be customized.
 
 ### Making payments
+
+### Start the server
+```
+sudo CHIA_ROOT="/home/mariano/.chia/testnet7"  ./venv/bin/python pool_server.py
+```
