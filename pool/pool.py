@@ -23,11 +23,12 @@ from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.consensus.pot_iterations import calculate_iterations_quality
 from chia.util.lru_cache import LRUCache
 from chia.wallet.transaction_record import TransactionRecord
+from chia.pools.pool_puzzles import launcher_id_to_p2_puzzle_hash
 
 from difficulty_adjustment import get_new_difficulty
 from error_codes import PoolErr
+from pool.singleton import create_absorb_transaction
 from store import FarmerRecord, PoolStore
-from singleton import create_absorb_transaction, calculate_p2_singleton_ph
 
 
 @dataclasses.dataclass
@@ -578,13 +579,13 @@ class Pool:
         farmer_record: Optional[FarmerRecord] = await self.store.get_farmer_record(partial.payload.launcher_id)
         if farmer_record is None:
             # TODO(chia-dev)
-            genesis_coin: Optional[CoinRecord] = await self.node_rpc_client.get_coin_record_by_name(
+            launcher_coin: Optional[CoinRecord] = await self.node_rpc_client.get_coin_record_by_name(
                 partial.payload.launcher_id
             )
-            if genesis_coin is None:
+            if launcher_coin is None:
                 self.log.warning(f"Can not find genesis coin {partial.payload.launcher_id}")
                 return None
-            if not genesis_coin.spent:
+            if not launcher_coin.spent:
                 self.log.warning(f"Genesis coin {partial.payload.launcher_id} not spent")
                 return None
 
@@ -669,7 +670,7 @@ class Pool:
                 "error_message": f"The aggregate signature is invalid {partial.rewards_and_partial_aggregate_signature}",
             }
 
-        if partial.payload.proof_of_space.pool_contract_puzzle_hash != await calculate_p2_singleton_ph(partial):
+        if partial.payload.proof_of_space.pool_contract_puzzle_hash != launcher_id_to_p2_puzzle_hash(partial.payload.launcher_id):
             return {
                 "error_code": PoolErr.INVALID_P2_SINGLETON_PUZZLE_HASH.value,
                 "error_message": f"The puzzl h {partial.rewards_and_partial_aggregate_signature}",
