@@ -6,6 +6,8 @@ from asyncio import Task
 from math import floor
 from typing import Dict, Optional, Set, List, Tuple
 
+import os, yaml
+
 from blspy import AugSchemeMPL, PrivateKey, G1Element
 from chia.pools.pool_wallet_info import PoolState, PoolSingletonState, POOL_PROTOCOL_VERSION
 from chia.protocols.pool_protocol import SubmitPartial
@@ -42,6 +44,16 @@ class Pool:
         # If you want to log to a file: use filename='example.log', encoding='utf-8'
         self.log.basicConfig(level=logging.INFO)
 
+        # We load our configurations from here
+        with open(os.getcwd() + '/config.yaml') as f:
+            pool_config: Dict = yaml.safe_load(f)
+
+        # Set our pool info here
+        self.info_default_res = pool_config["pool_info"]["default_res"];
+        self.info_name = pool_config["pool_info"]["name"];
+        self.info_logo_url = pool_config["pool_info"]["logo_url"];
+        self.info_description = pool_config["pool_info"]["description"];
+
         self.private_key = private_key
         self.public_key: G1Element = private_key.get_g1()
         self.config = config
@@ -51,7 +63,7 @@ class Pool:
 
         self.store: Optional[PoolStore] = None
 
-        self.pool_fee = 0.01
+        self.pool_fee = pool_config["pool_fee"]
 
         # This number should be held constant and be consistent for every pool in the network. DO NOT CHANGE
         self.iters_limit = self.constants.POOL_SUB_SLOT_ITERS // 64
@@ -61,9 +73,9 @@ class Pool:
 
         # TODO(pool): potentially tweak these numbers for security and performance
         # This is what the user enters into the input field. This exact value will be stored on the blockchain
-        self.pool_url = "http://10.0.0.45"
-        self.min_difficulty = uint64(10)  # 10 difficulty is about 1 proof a day per plot
-        self.default_difficulty: uint64 = uint64(10)
+        self.pool_url = pool_config["pool_url"]
+        self.min_difficulty = uint64(pool_config["min_difficulty"])  # 10 difficulty is about 1 proof a day per plot
+        self.default_difficulty: uint64 = uint64(pool_config["default_difficulty"])
 
         self.pending_point_partials: Optional[asyncio.Queue] = None
         self.recent_points_added: LRUCache = LRUCache(20000)
@@ -76,46 +88,46 @@ class Pool:
 
         # Using 2164248527
         self.default_target_puzzle_hash: bytes32 = bytes32(
-            decode_puzzle_hash("txch16mhvz4cpzwq9dmds5lkjk22h34wftcc0xx728zmqwnla2wy2gl0qancuzs")
+            decode_puzzle_hash(pool_config["default_target_puzzle_hash"])
         )
 
         # The pool fees will be sent to this address. This MUST be on a different key than the target_puzzle_hash,
         # otherwise, the fees will be sent to the users. Using 690783650
         self.pool_fee_puzzle_hash: bytes32 = bytes32(
-            decode_puzzle_hash("txch1ww8m7ttxuc2ng6qlthk609hkrt25mklcuqn882rkngnygeuu8fks36ckvs")
+            decode_puzzle_hash(pool_config["pool_fee_puzzle_hash"])
         )
 
         # This is the wallet fingerprint and ID for the wallet spending the funds from `self.default_target_puzzle_hash`
-        self.wallet_fingerprint = 2164248527
-        self.wallet_id = "1"
+        self.wallet_fingerprint = pool_config["wallet_fingerprint"]
+        self.wallet_id = pool_config["wallet_id"]
 
         # We need to check for slow farmers. If farmers cannot submit proofs in time, they won't be able to win
         # any rewards either. This number can be tweaked to be more or less strict. More strict ensures everyone
         # gets high rewards, but it might cause some of the slower farmers to not be able to participate in the pool.
-        self.partial_time_limit: int = 25
+        self.partial_time_limit: int = pool_config["partial_time_limit"]
 
         # There is always a risk of a reorg, in which case we cannot reward farmers that submitted partials in that
         # reorg. That is why we have a time delay before changing any account points.
-        self.partial_confirmation_delay: int = 30
+        self.partial_confirmation_delay: int = pool_config["partial_confirmation_delay"]
 
         # These are the phs that we want to look for on chain, that we can claim to our pool
         self.scan_p2_singleton_puzzle_hashes: Set[bytes32] = set()
 
         # Don't scan anything before this height, for efficiency (for example pool start date)
-        self.scan_start_height: uint32 = uint32(1000)
+        self.scan_start_height: uint32 = uint32(pool_config["partial_confirmation_delay"])
 
         # Interval for scanning and collecting the pool rewards
-        self.collect_pool_rewards_interval = 600
+        self.collect_pool_rewards_interval = pool_config["partial_confirmation_delay"]
 
         # After this many confirmations, a transaction is considered final and irreversible
-        self.confirmation_security_threshold = 6
+        self.confirmation_security_threshold = pool_config["confirmation_security_threshold"]
 
         # Interval for making payout transactions to farmers
-        self.payment_interval = 600
+        self.payment_interval = pool_config["confirmation_security_threshold"]
 
         # We will not make transactions with more targets than this, to ensure our transaction gets into the blockchain
         # faster.
-        self.max_additions_per_transaction = 400
+        self.max_additions_per_transaction = pool_config["max_additions_per_transaction"]
 
         # This is the list of payments that we have not sent yet, to farmers
         self.pending_payments: Optional[asyncio.Queue] = None
@@ -127,7 +139,7 @@ class Pool:
         self.wallet_synced = False
 
         # We target these many partials for this number of seconds. We adjust after receiving this many partials.
-        self.number_of_partials_target: int = 30
+        self.number_of_partials_target: int = pool_config["number_of_partials_target"]
         self.time_target: int = 24 * 360
 
         # Tasks (infinite While loops) for different purposes
@@ -254,9 +266,9 @@ class Pool:
                         not_claimable_amounts += ph_to_amounts[rec.p2_singleton_puzzle_hash]
 
                 if len(coin_records) > 0:
-                    self.log.info(f"Claimable amount: {claimable_amounts / (10**12)}")
-                    self.log.info(f"Not claimable amount: {not_claimable_amounts / (10**12)}")
-                    self.log.info(f"Not buried amounts: {not_buried_amounts / (10**12)}")
+                    self.log.info(f"Claimable amount: {claimable_amounts / (10 ** 12)}")
+                    self.log.info(f"Not claimable amount: {not_claimable_amounts / (10 ** 12)}")
+                    self.log.info(f"Not buried amounts: {not_buried_amounts / (10 ** 12)}")
 
                 for rec in farmer_records:
                     if rec.is_pool_member:
@@ -326,8 +338,8 @@ class Pool:
                 for coin_record in coin_records:
                     assert not coin_record.spent
                     if (
-                        coin_record.spent_block_index
-                        > self.blockchain_state["peak"].height - self.confirmation_security_threshold
+                            coin_record.spent_block_index
+                            > self.blockchain_state["peak"].height - self.confirmation_security_threshold
                     ):
                         continue
                     coins_to_distribute.append(coin_record.coin)
@@ -342,8 +354,8 @@ class Pool:
                 amount_to_distribute = total_amount_claimed - pool_coin_amount
 
                 self.log.info(f"Total amount claimed: {total_amount_claimed / (10 ** 12)}")
-                self.log.info(f"Pool coin amount (includes blockchain fee) {pool_coin_amount  / (10 ** 12)}")
-                self.log.info(f"Total amount to distribute: {amount_to_distribute  / (10 ** 12)}")
+                self.log.info(f"Pool coin amount (includes blockchain fee) {pool_coin_amount / (10 ** 12)}")
+                self.log.info(f"Total amount to distribute: {amount_to_distribute / (10 ** 12)}")
 
                 async with self.store.lock:
                     # Get the points of each farmer, as well as payout instructions. Here a chia address is used,
@@ -416,8 +428,8 @@ class Pool:
                 self.log.info(f"Transaction: {transaction}")
 
                 while (
-                    not transaction.confirmed
-                    or not (peak_height - transaction.confirmed_at_height) > self.confirmation_security_threshold
+                        not transaction.confirmed
+                        or not (peak_height - transaction.confirmed_at_height) > self.confirmation_security_threshold
                 ):
                     transaction = await self.wallet_rpc_client.get_transaction(self.wallet_id, transaction.name)
                     peak_height = self.blockchain_state["peak"].height
@@ -524,8 +536,8 @@ class Pool:
                         return
                     assert partial.payload.owner_public_key == farmer_record.singleton_tip_state.owner_pubkey
                     assert (
-                        partial.payload.proof_of_space.pool_contract_puzzle_hash
-                        == farmer_record.p2_singleton_puzzle_hash
+                            partial.payload.proof_of_space.pool_contract_puzzle_hash
+                            == farmer_record.p2_singleton_puzzle_hash
                     )
 
                     new_payout_instructions: str = farmer_record.pool_payout_instructions
@@ -534,8 +546,8 @@ class Pool:
                     if farmer_record.pool_payout_instructions != partial.payload.pool_payout_instructions:
                         # Only allow changing payout instructions if we have the latest authentication public key
                         if (
-                            farmer_record.authentication_public_key_timestamp
-                            <= partial.payload.authentication_key_info.authentication_public_key_timestamp
+                                farmer_record.authentication_public_key_timestamp
+                                <= partial.payload.authentication_key_info.authentication_public_key_timestamp
                         ):
                             # This means the authentication key being used is at least as new as the one in the DB
                             self.log.info(
@@ -571,7 +583,7 @@ class Pool:
             self.log.error(f"Exception in confirming partial: {e} {error_stack}")
 
     async def get_and_validate_singleton_state(
-        self, partial: SubmitPartial
+            self, partial: SubmitPartial
     ) -> Optional[Tuple[CoinSolution, PoolState]]:
         """
         :return: the state of the singleton, if it currently exists in the blockchain, and if it is assigned to
@@ -636,12 +648,12 @@ class Pool:
         return None
 
     async def process_partial(
-        self,
-        partial: SubmitPartial,
-        time_received_partial: uint64,
-        balance: uint64,
-        current_difficulty: uint64,
-        can_update_difficulty: bool,
+            self,
+            partial: SubmitPartial,
+            time_received_partial: uint64,
+            balance: uint64,
+            current_difficulty: uint64,
+            can_update_difficulty: bool,
     ) -> Dict:
         if partial.payload.suggested_difficulty < self.min_difficulty:
             return {
@@ -665,7 +677,7 @@ class Pool:
             }
 
         if partial.payload.proof_of_space.pool_contract_puzzle_hash != launcher_id_to_p2_puzzle_hash(
-            partial.payload.launcher_id
+                partial.payload.launcher_id
         ):
             return {
                 "error_code": PoolErr.INVALID_P2_SINGLETON_PUZZLE_HASH.value,
@@ -691,9 +703,9 @@ class Pool:
             return {
                 "error_code": PoolErr.TOO_LATE.value,
                 "error_message": f"Received partial in {time_received_partial - node_time_received_sp}. "
-                f"Make sure your proof of space lookups are fast, and network connectivity is good. Response "
-                f"must happen in less than {self.partial_time_limit} seconds. NAS or networking farming can be an "
-                f"issue",
+                                 f"Make sure your proof of space lookups are fast, and network connectivity is good. Response "
+                                 f"must happen in less than {self.partial_time_limit} seconds. NAS or networking farming can be an "
+                                 f"issue",
             }
 
         # Validate the proof
@@ -723,7 +735,7 @@ class Pool:
             return {
                 "error_code": PoolErr.PROOF_NOT_GOOD_ENOUGH.value,
                 "error_message": f"Proof of space has required iters {required_iters}, too high for difficulty "
-                f"{current_difficulty}",
+                                 f"{current_difficulty}",
                 "current_difficulty": current_difficulty,
             }
 
@@ -751,9 +763,9 @@ class Pool:
 
                     # Only allow changing difficulty if we have the latest authentication public key
                     if (
-                        current_difficulty != new_difficulty
-                        and farmer_record.authentication_public_key_timestamp
-                        <= partial.payload.authentication_key_info.authentication_public_key_timestamp
+                            current_difficulty != new_difficulty
+                            and farmer_record.authentication_public_key_timestamp
+                            <= partial.payload.authentication_key_info.authentication_public_key_timestamp
                     ):
                         await self.store.update_difficulty(partial.payload.launcher_id, new_difficulty)
                         return {"points_balance": balance, "current_difficulty": new_difficulty}

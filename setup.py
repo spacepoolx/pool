@@ -10,11 +10,12 @@ from setuptools import setup
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+
 setup(
     name="chia-pool-reference",
-    version="2.1",
-    author="zebedaios.li",
-    author_email="zebedaios.li@gmail.com",
+    version="1.2",
+    author="Mariano Sorgente",
+    author_email="mariano@chia.net",
     description=("A reference pool for the Chia blockchain."),
     license="Apache",
     packages=setuptools.find_packages(),
