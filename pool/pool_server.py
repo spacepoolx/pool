@@ -17,7 +17,7 @@ from chia.util.default_root import DEFAULT_ROOT_PATH
 from chia.util.config import load_config
 
 from error_codes import PoolErr
-from pool.store import FarmerRecord
+from store import FarmerRecord
 from pool import Pool
 
 
@@ -83,6 +83,7 @@ class PoolServer:
         )
         if farmer_record is not None:
             current_difficulty: uint64 = farmer_record.difficulty
+            self.pool.log.info(f"Curr dif: {current_difficulty}")
             balance = farmer_record.points
         else:
             current_difficulty = self.pool.default_difficulty
