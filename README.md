@@ -1,4 +1,5 @@
 This prototoype is not yet supported and is still in development.
+This code is provided under the Apache 2.0 license.
 Note: the draft specification is in the SPECIFICATION.md file.
 
 ### Collecting pool rewards
