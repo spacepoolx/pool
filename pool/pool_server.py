@@ -17,7 +17,7 @@ from chia.util.default_root import DEFAULT_ROOT_PATH
 from chia.util.config import load_config
 
 from error_codes import PoolErr
-from store import FarmerRecord
+from pool.store import FarmerRecord
 from pool import Pool
 
 
@@ -94,20 +94,17 @@ class PoolServer:
             res = await cor(args)
             self.pool.log.info(f"Delayed response: {res}")
 
-        res_dict = await self.pool.process_partial(
-            partial,
-            time_received_partial,
-            balance,
-            current_difficulty,
-        )
+        res_dict = await self.pool.process_partial(partial, time_received_partial, balance, current_difficulty, True)
 
         if "error_code" in res_dict and "error_code" == PoolErr.NOT_FOUND.value:
             asyncio.create_task(
-                await_and_call(self.pool.process_partial, partial, time_received_partial, balance, current_difficulty)
+                await_and_call(
+                    self.pool.process_partial, partial, time_received_partial, balance, current_difficulty, False
+                )
             )
 
         self.pool.log.info(
-            f"Returning {res_dict}, time: {time.time() - start_time}"
+            f"Returning {res_dict}, time: {time.time() - start_time} "
             f"singleton: {request['payload']['singleton_genesis']}"
         )
         return obj_to_response(res_dict)
