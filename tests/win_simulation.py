@@ -13,6 +13,7 @@ print(f"SSi {ssi}")
 # We use 37.6 billion as an approximation and a number that is easier to remember
 ssi = 37600000000
 
+
 def do_simulation(days: int, diff: int, k: int, num: int):
     successes = 0
     for i in range(int(9216 * days)):
