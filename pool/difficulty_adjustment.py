@@ -8,6 +8,7 @@ def get_new_difficulty(
     number_of_partials_target: int,
     time_target: int,
     current_difficulty: uint64,
+    custom_difficulty: str,
     current_time: uint64,
     min_difficulty: uint64,
 ) -> uint64:
@@ -30,13 +31,30 @@ def get_new_difficulty(
         return max(min_difficulty, current_difficulty // 5)
 
     if current_time - last_timestamp > 3600:
-        return max(min_difficulty, uint64(int(current_difficulty // 1.5)))
+        return max(min_difficulty, uint64(int(current_difficulty / 1.5)))
 
-    # If we don't have enough partials at this difficulty, don't update yet
-    if len(recent_partials) < number_of_partials_target:
+    time_taken = uint64(recent_partials[0][0] - recent_partials[-1][0])
+
+    if custom_difficulty == 'LOWEST':
+        number_of_partials_target = int(number_of_partials_target * 2)
+    elif custom_difficulty == 'LOW':
+        number_of_partials_target = int(number_of_partials_target * 1.5)
+    elif custom_difficulty == 'HIGH':
+        number_of_partials_target = int(number_of_partials_target * 0.75)
+    elif custom_difficulty == 'HIGHEST':
+        number_of_partials_target = int(number_of_partials_target * 0.5)
+
+    # If we don't have enough partials at this difficulty and time between last and
+    # 1st partials is below target time, don't update yet
+    if len(recent_partials) < number_of_partials_target and time_taken < time_target * 0.8:
         return current_difficulty
 
+    # Adjust time_taken if number of partials didn't reach number_of_partials_target
+    if len(recent_partials) < number_of_partials_target:
+        time_taken = time_taken * number_of_partials_target / len(recent_partials)
+
     # Finally, this is the standard case of normal farming and slow (or no) growth, adjust to the new difficulty
-    time_taken = uint64(recent_partials[0][0] - recent_partials[-1][0])
+
     new_difficulty = uint64(int(current_difficulty * time_target / time_taken))
+
     return max(min_difficulty, new_difficulty)
