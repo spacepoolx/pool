@@ -5,18 +5,20 @@ import aiosqlite
 from blspy import G1Element
 from chia.pools.pool_wallet_info import PoolState
 from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.types.coin_solution import CoinSolution
+from chia.types.coin_spend import CoinSpend
 from chia.util.ints import uint64
 
 from .abstract import AbstractPoolStore
 from ..record import FarmerRecord
+from ..util import RequestMetadata
 
 
 class SqlitePoolStore(AbstractPoolStore):
     """
     Pool store based on SQLite.
     """
-    def __init__(self, db_path: Path = Path('pooldb.sqlite')):
+
+    def __init__(self, db_path: Path = Path("pooldb.sqlite")):
         super().__init__()
         self.db_path = db_path
         self.connection: Optional[aiosqlite.Connection] = None
@@ -60,7 +62,7 @@ class SqlitePoolStore(AbstractPoolStore):
             row[2],
             bytes.fromhex(row[3]),
             G1Element.from_bytes(bytes.fromhex(row[4])),
-            CoinSolution.from_bytes(row[5]),
+            CoinSpend.from_bytes(row[5]),
             PoolState.from_bytes(row[6]),
             row[7],
             row[8],
@@ -68,7 +70,7 @@ class SqlitePoolStore(AbstractPoolStore):
             True if row[10] == 1 else False,
         )
 
-    async def add_farmer_record(self, farmer_record: FarmerRecord):
+    async def add_farmer_record(self, farmer_record: FarmerRecord, metadata: RequestMetadata):
         cursor = await self.connection.execute(
             f"INSERT OR REPLACE INTO farmer VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
@@ -109,7 +111,7 @@ class SqlitePoolStore(AbstractPoolStore):
     async def update_singleton(
         self,
         launcher_id: bytes32,
-        singleton_tip: CoinSolution,
+        singleton_tip: CoinSpend,
         singleton_tip_state: PoolState,
         is_pool_member: bool,
     ):
