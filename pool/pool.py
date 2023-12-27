@@ -71,8 +71,6 @@ class Pool:
         self.public_key: G1Element = private_key.get_g1()
         self.config = config
         self.constants = constants
-        self.node_rpc_client = None
-        self.wallet_rpc_client = None
 
         self.store: Optional[PoolStore] = None
 
@@ -122,6 +120,10 @@ class Pool:
         # reorg. That is why we have a time delay before changing any account points.
         self.partial_confirmation_delay: int = pool_config["partial_confirmation_delay"]
 
+        # Only allow PUT /farmer per launcher_id every n seconds to prevent difficulty change attacks.
+        self.farmer_update_blocked: set = set()
+        self.farmer_update_cooldown_seconds: int = 600
+
         # These are the phs that we want to look for on chain, that we can claim to our pool
         self.scan_p2_singleton_puzzle_hashes: Set[bytes32] = set()
 
@@ -162,7 +164,9 @@ class Pool:
         self.get_peak_loop_task: Optional[asyncio.Task] = None
 
         self.node_rpc_client: Optional[FullNodeRpcClient] = None
+        self.node_rpc_port = pool_config["node_rpc_port"]
         self.wallet_rpc_client: Optional[WalletRpcClient] = None
+        self.wallet_rpc_port = pool_config["wallet_rpc_port"]
 
     async def start(self):
         self.store = await PoolStore.create()
@@ -170,10 +174,10 @@ class Pool:
 
         self_hostname = self.config["self_hostname"]
         self.node_rpc_client = await FullNodeRpcClient.create(
-            self_hostname, uint16(8555), DEFAULT_ROOT_PATH, self.config
+            self_hostname, uint16(self.node_rpc_port), DEFAULT_ROOT_PATH, self.config
         )
         self.wallet_rpc_client = await WalletRpcClient.create(
-            self.config["self_hostname"], uint16(9256), DEFAULT_ROOT_PATH, self.config
+            self.config["self_hostname"], uint16(self.wallet_rpc_port), DEFAULT_ROOT_PATH, self.config
         )
         self.blockchain_state = await self.node_rpc_client.get_blockchain_state()
         res = await self.wallet_rpc_client.log_in_and_skip(fingerprint=self.wallet_fingerprint)
@@ -599,14 +603,17 @@ class Pool:
             return PostFarmerResponse(self.welcome_message).to_json_dict()
 
     async def update_farmer(self, request: PutFarmerRequest) -> Dict:
-        farmer_record: Optional[FarmerRecord] = await self.store.get_farmer_record(request.payload.launcher_id)
+        launcher_id = request.payload.launcher_id
+        # First check if this launcher_id is currently blocked for farmer updates, if so there is no reason to validate
+        # all the stuff below
+        if launcher_id in self.farmer_update_blocked:
+            return error_dict(PoolErrorCode.REQUEST_FAILED, f"Cannot update farmer yet.")
+        farmer_record: Optional[FarmerRecord] = await self.store.get_farmer_record(launcher_id)
         if farmer_record is None:
-            return error_dict(
-                PoolErrorCode.FARMER_NOT_KNOWN, f"Farmer with launcher_id {request.payload.launcher_id} not known."
-            )
+            return error_dict(PoolErrorCode.FARMER_NOT_KNOWN, f"Farmer with launcher_id {launcher_id} not known.")
 
         singleton_state_tuple: Optional[Tuple[CoinSolution, PoolState]] = await self.get_and_validate_singleton_state(
-            request.payload.launcher_id
+            launcher_id
         )
         last_spend, last_state = singleton_state_tuple
 
@@ -642,10 +649,16 @@ class Pool:
             )
             response_dict["suggested_difficulty"] = is_new_value
             if is_new_value:
-                farmer_dict["suggested_difficulty"] = request.payload.suggested_difficulty
+                farmer_dict["difficulty"] = request.payload.suggested_difficulty
 
-        self.log.info(f"Updated farmer: {response_dict}")
-        await self.store.add_farmer_record(FarmerRecord.from_json_dict(farmer_dict))
+        async def update_farmer_later():
+            await asyncio.sleep(self.farmer_update_cooldown_seconds)
+            await self.store.add_farmer_record(FarmerRecord.from_json_dict(farmer_dict))
+            self.farmer_update_blocked.remove(launcher_id)
+            self.log.info(f"Updated farmer: {response_dict}")
+
+        self.farmer_update_blocked.add(launcher_id)
+        await asyncio.create_task(update_farmer_later())
 
         return PutFarmerResponse.from_json_dict(response_dict).from_json_dict()
 
