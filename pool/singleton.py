@@ -7,16 +7,20 @@ from chia.pools.pool_puzzles import (
     create_absorb_spend,
     solution_to_extra_data,
     get_most_recent_singleton_coin_from_coin_solution,
+    pool_state_to_inner_puzzle,
+    create_full_puzzle,
+    get_delayed_puz_info_from_launcher_spend,
 )
 from chia.pools.pool_wallet import PoolSingletonState
 from chia.pools.pool_wallet_info import PoolState
 from chia.rpc.full_node_rpc_client import FullNodeRpcClient
 from chia.types.blockchain_format.coin import Coin
+from chia.types.blockchain_format.program import Program, SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
 from chia.types.coin_solution import CoinSolution
 from chia.types.spend_bundle import SpendBundle
-from chia.util.ints import uint32
+from chia.util.ints import uint32, uint64
 
 from .record import FarmerRecord
 
@@ -30,13 +34,27 @@ async def get_coin_spend(node_rpc_client: FullNodeRpcClient, coin_record: CoinRe
     return await node_rpc_client.get_puzzle_and_solution(coin_record.coin.name(), coin_record.spent_block_index)
 
 
+async def validate_puzzle_hash(
+    launcher_id: bytes32,
+    delay_ph: bytes32,
+    delay_time: uint64,
+    pool_state: PoolState,
+    outer_puzzle_hash: bytes32,
+    genesis_challenge: bytes32,
+) -> bool:
+    inner_puzzle: Program = pool_state_to_inner_puzzle(pool_state, launcher_id, genesis_challenge, delay_time, delay_ph)
+    new_full_puzzle: Program = create_full_puzzle(inner_puzzle, launcher_id)
+    return new_full_puzzle.get_tree_hash() == outer_puzzle_hash
+
+
 async def get_singleton_state(
     node_rpc_client: FullNodeRpcClient,
     launcher_id: bytes32,
     farmer_record: Optional[FarmerRecord],
     peak_height: uint32,
     confirmation_security_threshold: int,
-) -> Optional[Tuple[CoinSolution, PoolState]]:
+    genesis_challenge: bytes32,
+) -> Optional[Tuple[CoinSolution, PoolState, PoolState]]:
     try:
         if farmer_record is None:
             launcher_coin: Optional[CoinRecord] = await node_rpc_client.get_coin_record_by_name(launcher_id)
@@ -48,11 +66,14 @@ async def get_singleton_state(
                 return None
 
             last_solution: Optional[CoinSolution] = await get_coin_spend(node_rpc_client, launcher_coin)
+            delay_time, delay_puzzle_hash = get_delayed_puz_info_from_launcher_spend(last_solution)
             saved_state = solution_to_extra_data(last_solution)
             assert last_solution is not None and saved_state is not None
         else:
             last_solution = farmer_record.singleton_tip
             saved_state = farmer_record.singleton_tip_state
+            delay_time = farmer_record.delay_time
+            delay_puzzle_hash = farmer_record.delay_puzzle_hash
 
         saved_solution = last_solution
         last_not_none_state: PoolState = saved_state
@@ -73,6 +94,16 @@ async def get_singleton_state(
             assert next_coin_record is not None
 
             if not next_coin_record.spent:
+                if not await validate_puzzle_hash(
+                    launcher_id,
+                    delay_puzzle_hash,
+                    delay_time,
+                    last_not_none_state,
+                    next_coin_record.coin.puzzle_hash,
+                    genesis_challenge,
+                ):
+                    log.warning(f"Invalid singleton puzzle_hash for {launcher_id}")
+                    return None
                 break
 
             last_solution: Optional[CoinSolution] = await get_coin_spend(node_rpc_client, next_coin_record)
@@ -82,15 +113,28 @@ async def get_singleton_state(
 
             if pool_state is not None:
                 last_not_none_state = pool_state
-            if peak_height - confirmation_security_threshold > next_coin_record.spent_block_index:
+            if peak_height - confirmation_security_threshold >= next_coin_record.spent_block_index:
                 # There is a state transition, and it is sufficiently buried
                 saved_solution = last_solution
                 saved_state = last_not_none_state
 
-        return saved_solution, saved_state
+        return saved_solution, saved_state, last_not_none_state
     except Exception as e:
         log.error(f"Error getting singleton: {e}")
         return None
+
+
+def get_farmed_height(reward_coin_record: CoinRecord, genesis_challenge: bytes32) -> Optional[uint32]:
+    # Returns the height farmed if it's a coinbase reward, otherwise None
+    for block_index in range(
+        reward_coin_record.confirmed_block_index, reward_coin_record.confirmed_block_index - 128, -1
+    ):
+        if block_index < 0:
+            break
+        pool_parent = pool_parent_id(uint32(block_index), genesis_challenge)
+        if pool_parent == reward_coin_record.coin.parent_coin_info:
+            return uint32(block_index)
+    return None
 
 
 async def create_absorb_transaction(
@@ -100,13 +144,15 @@ async def create_absorb_transaction(
     reward_coin_records: List[CoinRecord],
     genesis_challenge: bytes32,
 ) -> Optional[SpendBundle]:
-    singleton_state_tuple: Optional[Tuple[CoinSolution, PoolState]] = await get_singleton_state(
-        node_rpc_client, farmer_record.launcher_id, farmer_record, peak_height, 0
+    singleton_state_tuple: Optional[Tuple[CoinSolution, PoolState, PoolState]] = await get_singleton_state(
+        node_rpc_client, farmer_record.launcher_id, farmer_record, peak_height, 0, genesis_challenge
     )
     if singleton_state_tuple is None:
         log.info(f"Invalid singleton {farmer_record.launcher_id}.")
         return None
-    last_solution, last_state = singleton_state_tuple
+    last_solution, last_state, last_state_2 = singleton_state_tuple
+    # Here the buried state is equivalent to the latest state, because we use 0 as the security_threshold
+    assert last_state == last_state_2
 
     if last_state.state == PoolSingletonState.SELF_POOLING:
         log.info(f"Don't try to absorb from former farmer {farmer_record.launcher_id}.")
@@ -119,15 +165,7 @@ async def create_absorb_transaction(
 
     all_spends: List[CoinSolution] = []
     for reward_coin_record in reward_coin_records:
-        found_block_index: Optional[uint32] = None
-        for block_index in range(
-            reward_coin_record.confirmed_block_index, reward_coin_record.confirmed_block_index - 100, -1
-        ):
-            if block_index < 0:
-                break
-            pool_parent = pool_parent_id(uint32(block_index), genesis_challenge)
-            if pool_parent == reward_coin_record.coin.parent_coin_info:
-                found_block_index = uint32(block_index)
+        found_block_index: Optional[uint32] = get_farmed_height(reward_coin_record, genesis_challenge)
         if not found_block_index:
             # The puzzle does not allow spending coins that are not a coinbase reward
             log.info(f"Received reward {reward_coin_record.coin} that is not a pool reward.")
@@ -144,6 +182,11 @@ async def create_absorb_transaction(
         last_solution = absorb_spend[0]
         all_spends += absorb_spend
         # TODO(pool): handle the case where the cost exceeds the size of the block
+        # TODO(pool): If you want to add a fee, you should do the following:
+        #  - only absorb one reward at a time
+        #  - spend the coin that you are receiving in the same spend bundle that it is created
+        #  - create an output with slightly less XCH, to yourself. for example, 1.7499 XCH
+        #  - The remaining value will automatically be used as a fee
 
     if len(all_spends) == 0:
         return None

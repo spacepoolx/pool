@@ -17,6 +17,7 @@ Several things are customizable in this pool reference. This includes:
 * How farmers receive payouts (XCH, BTC, ETH, etc), and how often
 * What store (DB) is used - by default it's an SQLite db. Users can use their own store implementations, based on 
   `AbstractPoolStore`, by supplying them to `pool_server.start_pool_server`
+* What happens (in terms of response) after a successful login
 
 However, some things cannot be changed. These are described in SPECIFICATION.md, and mostly relate to validation,
 protocol, and the singleton format for smart coins. 
@@ -36,7 +37,7 @@ requiring a central server
 When not pooling, farmers receive signage points from full nodes every 9 seconds, and send these signage points to the
 harvester. Each signage point is sent along with the `sub_slot_iters` and `difficulty`, two network-wide parameters
 which are adjusted every day (4608 blocks). The `sub_slot_iters` is the number of VDF iterations performed in 10
-minutes for the fastest VDF in the network. This increases if the fastest timelord's speed increases. The dififculty
+minutes for the fastest VDF in the network. This increases if the fastest timelord's speed increases. The difficulty
 is similiarly affected by timelord speed (it goes up when timelord speed increases, since blocks come faster), but 
 it's also affected by the total amount of space in the network. These two parameters determine how difficult it is
 to "win" a block and find a proof.
@@ -111,7 +112,7 @@ Note that the coinbase rewards in Chia are divided into two coins: the farmer co
 The user transaction fees on the blockchain are included in the farmer coin as well. This split of 7/8 1/8 exists
 to prevent attacks where one pool tries to destroy another by farming partials, but never submitting winning blocks.
 
-##% Difficulty
+### Difficulty
 The difficulty allows the pool operator to control how many partials per day they are receiving from each farmer.
 The difficulty can be adjusted separately for each farmer. A reasonable target would be 300 partials per day,
 to ensure frequent feedback to the farmer, and low variability.

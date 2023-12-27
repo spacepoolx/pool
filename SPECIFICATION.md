@@ -14,7 +14,7 @@ The Pool server must check that the `pool_contract_puzzle_hash` a.k.a. `p2_singl
 puzzle that they expect. Otherwise, the pool has no guarantee that users will not attempt to claim block rewards
 for themselves, and immediately leave the pool, something that the provided smart contract prevents.
 
-The Chia client must only connect to the pool configuration URL via HTTPS over TLS >= 1.3. This is to
+The Chia client must only connect to the pool configuration URL via HTTPS over TLS >= 1.2. This is to
 prevent session hijacking, leading to user funds being stolen.
 
 
@@ -208,6 +208,9 @@ according to [Signature validation](#signature-validation) and the signature mus
 where the parameter must be serialized and hashed according to [Signature validation](#signature-validation) and the
 signature must be signed by the private key of the `authentication_public_key` using the Augmented Scheme in the BLS
 IETF spec.
+
+Note: The pool MUST return the current points balance, which is the total number of points found since the last 
+payout for that user. 
 
 ## POST /farmer
 Register a farmer with the pool. This is required once before submitting the first partial.
@@ -438,9 +441,6 @@ The unique identifier of the farmer's singleton, see [Farmer identification](#fa
 See [Farmer authentication](#farmer-authentication) for the specification of
 `authentication_token`.
 
-#### target_puzzle_hash
-The pool's target puzzle hash, see [GET /pool_info](#get-pool_info)
-
 #### signature
 This is a BLS signature of the hashed serialization of the following data in the given order:
 
@@ -451,7 +451,8 @@ This is a BLS signature of the hashed serialization of the following data in the
 |target_puzzle_hash | bytes32 |
 |authentication_token | uint64 |
 
-where `method_name` must be the serialized string `"get_login"`, the parameters must be serialized and hashed
+where `method_name` must be the serialized string `"get_login"` and `target_puzzle_hash`
+is pool's target puzzle hash (see [GET /pool_info](#get-pool_info)). The parameters must be serialized and hashed
 according to [Signature validation](#signature-validation) and the signature must be signed by the private key of the
 `authentication_public_key` using the Augmented Scheme in the BLS IETF spec.
 
