@@ -1,6 +1,6 @@
 git+https://github.com/openchia/chia-blockchain.git@stable/2.1#egg=chia-blockchain
 blspy~=1.0.2
 setuptools~=56.1.0
-aiosqlite~=0.17.0
+aiopg
 aiohttp~=3.7.4
 pytest==6.2.4
