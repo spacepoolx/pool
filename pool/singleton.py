@@ -145,4 +145,6 @@ async def create_absorb_transaction(
         all_spends += absorb_spend
         # TODO(pool): handle the case where the cost exceeds the size of the block
 
+    if len(all_spends) == 0:
+        return None
     return SpendBundle(all_spends, G2Element())
