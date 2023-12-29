@@ -35,8 +35,6 @@ from chia.consensus.constants import ConsensusConstants
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.util.ints import uint8, uint16, uint32, uint64
 from chia.util.byte_types import hexstr_to_bytes
-from chia.util.config import load_config
-from chia.util.default_root import DEFAULT_ROOT_PATH
 from chia.util.streamable import Streamable
 from chia.rpc.full_node_rpc_client import FullNodeRpcClient
 from chia.full_node.signage_point import SignagePoint
@@ -98,10 +96,7 @@ class Pool:
         self.info_description = pool_config["pool_info"]["description"]
         self.welcome_message = pool_config["welcome_message"]
 
-        self.config = load_config(DEFAULT_ROOT_PATH, "config.yaml")
-        overrides = self.config["network_overrides"]["constants"][
-            self.config["selected_network"]
-        ]
+        overrides = self.pool_config["constants"]["mainnet"]
         self.constants: ConsensusConstants = DEFAULT_CONSTANTS.replace_str_to_bytes(**overrides)
 
         self.store = PgsqlPoolStore(pool_config)
@@ -270,22 +265,19 @@ class Pool:
         working_node = False
         for node in list(self.nodes):
             args = [node['hostname'], uint16(node['rpc_port'])]
-            if node['ssl_dir']:
-                args += [
-                    pathlib.Path(node['ssl_dir']),
-                    {
-                        'private_ssl_ca': {
-                            'crt': 'ca/private_ca.crt',
-                            'key': 'ca/private_ca.key',
-                        },
-                        'daemon_ssl': {
-                            'private_crt': 'daemon/private_daemon.crt',
-                            'private_key': 'daemon/private_daemon.key',
-                        },
+            args += [
+                pathlib.Path(node['ssl_dir']),
+                {
+                    'private_ssl_ca': {
+                        'crt': 'ca/private_ca.crt',
+                        'key': 'ca/private_ca.key',
                     },
-                ]
-            else:
-                args += [DEFAULT_ROOT_PATH, self.config]
+                    'daemon_ssl': {
+                        'private_crt': 'daemon/private_daemon.crt',
+                        'private_key': 'daemon/private_daemon.key',
+                    },
+                },
+            ]
 
             try:
                 node['rpc_client'] = await FullNodeRpcClient.create(*args)
@@ -303,26 +295,21 @@ class Pool:
             raise RuntimeError('Unable to create node client, exiting.')
 
         for wallet in self.wallets:
-            if wallet['ssl_dir']:
-                wallet['rpc_client'] = await WalletRpcClient.create(
-                    wallet['hostname'],
-                    uint16(wallet['rpc_port']),
-                    pathlib.Path(wallet['ssl_dir']),
-                    {
-                        'private_ssl_ca': {
-                            'crt': 'private_ca.crt',
-                            'key': 'private_ca.key',
-                        },
-                        'daemon_ssl': {
-                            'private_crt': 'private_daemon.crt',
-                            'private_key': 'private_daemon.key',
-                        },
+            wallet['rpc_client'] = await WalletRpcClient.create(
+                wallet['hostname'],
+                uint16(wallet['rpc_port']),
+                pathlib.Path(wallet['ssl_dir']),
+                {
+                    'private_ssl_ca': {
+                        'crt': 'private_ca.crt',
+                        'key': 'private_ca.key',
                     },
-                )
-            else:
-                wallet['rpc_client'] = await WalletRpcClient.create(
-                    wallet['hostname'], uint16(wallet['rpc_port']), DEFAULT_ROOT_PATH, self.config
-                )
+                    'daemon_ssl': {
+                        'private_crt': 'private_daemon.crt',
+                        'private_key': 'private_daemon.key',
+                    },
+                },
+            )
             try:
                 wallet['synced'] = await wallet['rpc_client'].get_synced()
             except Exception:
