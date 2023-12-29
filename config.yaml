@@ -2,7 +2,7 @@ pool_info:
   default_res: Chia reference pool
   name: The Reference Pool
   logo_url: https://www.chia.net/img/chia_logo.svg
-  description: (example) The Reference Pool allows you to pool with low fees, paying out daily using Chia.
+  description: The Reference Pool allows you to pool with low fees, paying out daily using Chia.
 welcome_message: "Welcome to the reference pool!"
 constants:
   mainnet:
@@ -11,7 +11,7 @@ constants:
     GENESIS_PRE_FARM_POOL_PUZZLE_HASH: d23da14695a188ae5708dd152263c4db883eb27edeb936178d4d988b8f3ce5fc
 fee:
   pool: 0.01
-  address: txch1jhydnk47xl40jn3pgwjd708uk2wqzqexagy9xxjcwt2qeaumv3fqcrw6e2
+  address: xch1z6x9h4ym5s5hn3qwn7hytcuxnrwv935f30pgc2eqh27aund73nkshl6lnm
   stay_length: 365
   size_discount:
     200: 0.05
@@ -27,9 +27,9 @@ min_difficulty: 10
 default_difficulty: 10
 authentication_token_timeout: 5
 wallets:
-  - address: txch1h8vdax8vtspx7yt8kz6cwu2awymlgwmdr4qts8v643kusd2lmc5qht7ltq
+  - address: xch16kkp7fgxnhq6k6gqkyjxlgutj2zf52y6cap74vt9p7cfx7lppvvs8wqrs8
     id: 1
-    fingerprint: 3967641394
+    fingerprint: 1432998894
     rpc_port: 9256
     hostname: localhost
     ssl_dir: ""
