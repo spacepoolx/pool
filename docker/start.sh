@@ -3,7 +3,7 @@ set -e
 
 export CHIA_ROOT=/data/chia/${CHIA_NETWORK:=mainnet}
 loglevel=${LOGLEVEL:=INFO}
-logdir=${LOGDIR:=/data/pool_log}
+logdir=${LOGDIR:=/data/logs}
 
 trap "killall python" TERM
 
@@ -13,4 +13,4 @@ cd /root/pool
 exec ./venv/bin/python -m pool.pool_server \
 	--log-level ${loglevel} \
 	--log-dir ${logdir} \
-	-c /data/config.yaml
+	-c /data/config/config.yaml
