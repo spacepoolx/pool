@@ -94,7 +94,7 @@ class Pool:
         self.info_name = pool_config["pool_info"]["name"]
         self.info_logo_url = pool_config["pool_info"]["logo_url"]
         self.info_description = pool_config["pool_info"]["description"]
-        self.welcome_message = pool_config["welcome_message"]
+        self.welcome_message = pool_config["pool_info"]["welcome_message"]
 
         overrides = self.pool_config["constants"]["mainnet"]
         self.constants: ConsensusConstants = DEFAULT_CONSTANTS.replace_str_to_bytes(**overrides)
@@ -173,7 +173,7 @@ class Pool:
         for wallet in pool_config["wallets"]:
             wallet['puzzle_hash'] = bytes32(decode_puzzle_hash(wallet['address']))
             self.default_target_puzzle_hashes.append(wallet['puzzle_hash'])
-            wallet['hostname'] = wallet.get("hostname") or self.config["self_hostname"]
+            wallet['hostname'] = wallet.get("hostname")
             wallet['ssl_dir'] = wallet.get("ssl_dir")
             wallet['synced'] = False
             wallet['balance'] = None

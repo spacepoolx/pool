@@ -63,8 +63,8 @@ class PoolServer:
         self.pool = Pool(pool_config)
 
         self.pool_config = pool_config
-        self.host = pool_config["server"]["server_host"]
-        self.port = int(pool_config["server"]["server_port"])
+        self.host = pool_config["server"]["host"]
+        self.port = int(pool_config["server"]["port"])
 
     async def start(self):
         await self.pool.start()
@@ -91,7 +91,7 @@ class PoolServer:
         return inner
 
     async def index(self, _) -> web.Response:
-        return web.Response(text="OpenChia.io pool")
+        return web.Response(text="SpacePoolX.com pool")
 
     async def get_pool_info(self, _) -> web.Response:
         res: GetPoolInfoResponse = GetPoolInfoResponse(

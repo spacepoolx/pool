@@ -78,10 +78,10 @@ class PgsqlPoolStore(object):
             self.pool = await aiopg.create_pool(dsn)
         else:
             self.pool = await aiopg.create_pool(
-                f'host={self.pool_config["database_host"]} '
-                f'user={self.pool_config["database_user"]} '
-                f'password={self.pool_config["database_password"]} '
-                f'dbname={self.pool_config["database_name"]}'
+                f'host={self.pool_config["database"]["hostname"]} '
+                f'user={self.pool_config["database"]["username"]} '
+                f'password={self.pool_config["database"]["password"]} '
+                f'dbname={self.pool_config["database"]["database"]}'
             )
 
     async def close(self):

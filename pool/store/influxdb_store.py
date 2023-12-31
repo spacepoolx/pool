@@ -22,8 +22,8 @@ class InfluxdbStore(object):
     def __init__(self, pool_config: Dict):
         self.pool_config = pool_config
         self._loop = asyncio.get_event_loop()
-        self.bucket = self.pool_config['influxdb'].get('bucket', 'spacepoolx')
-        self.bucket_partial = self.pool_config['influxdb'].get('bucket_partial', 'spacepoolx_partial')
+        self.bucket = self.pool_config['influxdb'].get('bucket', 'chia')
+        self.bucket_partial = self.pool_config['influxdb'].get('bucket_partial', 'chia_partial')
 
     async def connect(self):
         self.client = InfluxDBClientAsync(
@@ -96,7 +96,7 @@ class InfluxdbStore(object):
 
     async def get_launcher_sizes(self, launcher_id: str, start: str):
         q = await self.query_api.query(
-            textwrap.dedent('''from(bucket: "spacepoolx")
+            textwrap.dedent('''from(bucket: "chia")
               |> range(start: duration(v: _start), stop: now())
               |> filter(fn: (r) => r["_measurement"] == "launcher_size")
               |> filter(fn: (r) => r["_field"] == "size_8h")

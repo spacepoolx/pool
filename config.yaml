@@ -1,40 +1,37 @@
 pool_info:
-  default_res: Chia reference pool
-  name: The Reference Pool
-  logo_url: https://www.chia.net/img/chia_logo.svg
-  description: The Reference Pool allows you to pool with low fees, paying out daily using Chia.
-welcome_message: "Welcome to the reference pool!"
+  default_res: "SpacePoolX is worthy of your trust."
+  name: "spacepoolx.com"
+  logo_url: "https://www.chia.net/img/chia_logo.svg"
+  description: "Spacepoolx allows you to pool with low fees, paying out daily using Chia."
+  welcome_message: "Welcome to the spacepoolx pool!"
+
 constants:
   mainnet:
     GENESIS_CHALLENGE: ccd5bb71183532bff220ba46c268991a3ff07eb358e8255a65c30a2dce0e5fbb
     GENESIS_PRE_FARM_FARMER_PUZZLE_HASH: 3d8765d3a597ec1d99663f6c9816d915b9f68613ac94009884c4addaefcce6af
     GENESIS_PRE_FARM_POOL_PUZZLE_HASH: d23da14695a188ae5708dd152263c4db883eb27edeb936178d4d988b8f3ce5fc
+
 fee:
   pool: 0.01
+  mojos_per_cost: 5
   address: xch1z6x9h4ym5s5hn3qwn7hytcuxnrwv935f30pgc2eqh27aund73nkshl6lnm
+  stay_discount: 0
   stay_length: 365
   size_discount:
     200: 0.05
     500: 0.1
     1000: 0.15
-  max_discount: 0.25
-  payment: false
+  max_discount: 0
+  payment: auto
   #payment_absolute: 1
-  absorb: false
+  absorb: auto
   #absorb_absolute: 1
-pool_url: http://10.0.0.45
+
+pool_url: "https://spacepoolx.com"
+login_url: "https://spacepoolx.com/zh-CN/explorer/login"
 min_difficulty: 10
 default_difficulty: 10
 authentication_token_timeout: 5
-wallets:
-  - address: xch16kkp7fgxnhq6k6gqkyjxlgutj2zf52y6cap74vt9p7cfx7lppvvs8wqrs8
-    id: 1
-    fingerprint: 1432998894
-    rpc_port: 9256
-    hostname: localhost
-    ssl_dir: ""
-node_hostname: localhost
-node_rpc_port: 8555
 partial_time_limit: 25
 partial_confirmation_delay: 300
 scan_start_height: 1000
@@ -42,28 +39,51 @@ collect_pool_rewards_interval: 600
 confirmation_security_threshold: 32
 payment_interval: 600
 max_additions_per_transaction: 400
-#absorbed_extra_coins:
-#  - hash
 number_of_partials_target: 300
 time_target: 86400
+pplns_interval: 86400
 relative_lock_height: 32
+min_payment: 0
+reward_system: "PPLNS"
+#absorbed_extra_coins:
+#  - hash
+
 logging:
   log_path: /var/log/chia
   log_filename: pool-server.log
   log_level: INFO
   log_maxfilesrotation: 7
   log_stdout: false
+
 server:
-  server_host: 0.0.0.0
-  server_port: 80
+  host: 0.0.0.0
+  port: 8088
+
+nodes:
+  - hostname: "localhost"
+    rpc_port: 8555
+    ssl_dir: "/data/ssl/node/"
+
+wallets:
+  - address: "xch16kkp7fgxnhq6k6gqkyjxlgutj2zf52y6cap74vt9p7cfx7lppvvs8wqrs8"
+    id: 1
+    fingerprint: 1432998894
+    rpc_port: 9256
+    hostname: "localhost"
+    ssl_dir: "/data/ssl/wallet/"
 
 influxdb:
-  url: 127.0.0.1
-  token:
-  org:
+  url: "http://influxdb:8086"
+  token: "spacepoolx"
+  org: "spacepoolx"
+  bucket: "chia"
+  bucket_partial: "chia_partial"
 
-
-#database_dsn: postgresql://pooldb:pooldbpassword@postgresql:5432/pooldb?sslmode=require
+database:
+  database: spacepoolx
+  hostname: postgres
+  username: spacepoolx
+  password: spacepoolx
 
 #hooks:
 #  absorb:
