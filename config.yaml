@@ -1,5 +1,5 @@
 pool_info:
-  default_res: "SpacePoolX is worthy of your trust."
+  default_res: "SpacePoolX is worthy of your trust"
   name: "spacepoolx.com"
   logo_url: "https://www.chia.net/img/chia_logo.svg"
   description: "Spacepoolx allows you to pool with low fees, paying out daily using Chia."
