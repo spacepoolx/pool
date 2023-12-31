@@ -75,7 +75,7 @@ class PartialsCache(dict):
         self.pool = pool
         self.store = store
         self.store_ts = store_ts
-        self.config = config
+        # self.config = config
         self.pool_config = pool_config
         self.keep_interval = keep_interval
         self.all = PartialsInterval(keep_interval)
@@ -160,7 +160,7 @@ class Partials(object):
         self.pool = pool
         self.store = pool.store
         self.store_ts = pool.store_ts
-        self.config = pool.config
+        # self.config = pool.config
         self.pool_config = pool.pool_config
         # By default keep partials for the last day
         self.keep_interval = pool.pool_config.get('pplns_interval', 86400)
@@ -170,7 +170,7 @@ class Partials(object):
             pool=pool,
             store=self.store,
             store_ts=self.store_ts,
-            config=self.config,
+            # config=self.config,
             pool_config=self.pool_config,
             keep_interval=self.keep_interval,
         )
@@ -219,11 +219,11 @@ class Partials(object):
         if time_target is None:
             time_target = self.pool_config['time_target']
         estimated_size = int(points / (time_target * 1.0881482400062102e-15))
-        if self.config['full_node']['selected_network'] in ('testnet7', 'testnet10'):
-            # DIFFICULTY_CONSTANT_FACTOR
-            # mainnet = 2 ** 67
-            # testnet = 10052721566054
-            estimated_size = int(estimated_size / 14680000)
+        # if self.config['full_node']['selected_network'] in ('testnet7', 'testnet10'):
+        #     # DIFFICULTY_CONSTANT_FACTOR
+        #     # mainnet = 2 ** 67
+        #     # testnet = 10052721566054
+        #     estimated_size = int(estimated_size / 14680000)
         return estimated_size
 
     async def scrub(self):
@@ -338,17 +338,17 @@ class Partials(object):
                         last_seen = new.get(launcher_id)
                         if not last_seen:
                             continue
-                        if self.config['full_node']['selected_network'] == 'mainnet':
+                        # if self.pool_config['full_node']['selected_network'] == 'mainnet':
                             # Farmers with low space can take up more hours without partials
-                            if rec.estimated_size < 429496729600:  # 400GiB
-                                if last_seen > six_hours_ago:
-                                    continue
-                            if rec.estimated_size < 966367641600:  # 900GiB
-                                if last_seen > three_hours_ago:
-                                    continue
-                            if rec.estimated_size < 1932735283200:  # 1800GiB
-                                if last_seen > two_hours_ago:
-                                    continue
+                        if rec.estimated_size < 429496729600:  # 400GiB
+                            if last_seen > six_hours_ago:
+                                continue
+                        if rec.estimated_size < 966367641600:  # 900GiB
+                            if last_seen > three_hours_ago:
+                                continue
+                        if rec.estimated_size < 1932735283200:  # 1800GiB
+                            if last_seen > two_hours_ago:
+                                continue
                         farmer_records[launcher_id] = rec
 
                         if rec.is_pool_member:
