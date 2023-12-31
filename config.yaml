@@ -62,7 +62,7 @@ server:
 nodes:
   - hostname: "localhost"
     rpc_port: 8555
-    ssl_dir: "/data/ssl/node/"
+    ssl_dir: "/data/ssl/node"
 
 wallets:
   - address: "xch16kkp7fgxnhq6k6gqkyjxlgutj2zf52y6cap74vt9p7cfx7lppvvs8wqrs8"
@@ -70,7 +70,7 @@ wallets:
     fingerprint: 1432998894
     rpc_port: 9256
     hostname: "localhost"
-    ssl_dir: "/data/ssl/wallet/"
+    ssl_dir: "/data/ssl/wallet"
 
 influxdb:
   url: "http://influxdb:8086"
