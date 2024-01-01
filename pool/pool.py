@@ -301,12 +301,12 @@ class Pool:
                 pathlib.Path(wallet['ssl_dir']),
                 {
                     'private_ssl_ca': {
-                        'crt': 'private_ca.crt',
-                        'key': 'private_ca.key',
+                        'crt': 'ca/private_ca.crt',
+                        'key': 'ca/private_ca.key',
                     },
                     'daemon_ssl': {
-                        'private_crt': 'private_daemon.crt',
-                        'private_key': 'private_daemon.key',
+                        'private_crt': 'daemon/private_daemon.crt',
+                        'private_key': 'daemon/private_daemon.key',
                     },
                 },
             )
