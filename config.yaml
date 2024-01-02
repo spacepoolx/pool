@@ -23,9 +23,9 @@ fee:
     1000: 0.15
   max_discount: 0
   payment: auto
-  #payment_absolute: 1
+  payment_absolute: 10000000
   absorb: auto
-  #absorb_absolute: 1
+  absorb_absolute: 10000000
 
 pool_url: "https://spacepoolx.com"
 login_url: "https://spacepoolx.com/zh-CN/explorer/login"

@@ -32,9 +32,7 @@ async def subtract_fees(
         additions=additions,
         tx_config=DEFAULT_TX_CONFIG,
     )
-    total_cost = (await get_cost(
-        transaction.spend_bundle, height, constants
-    )) * mojos_per_cost
+    total_cost = (await get_cost(transaction.spend_bundle, height, constants)) * mojos_per_cost
     cost_per_target = math.ceil(D(total_cost) / D(len(payment_targets)))
 
     for targets in payment_targets.values():
