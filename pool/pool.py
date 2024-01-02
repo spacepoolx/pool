@@ -1165,7 +1165,7 @@ class Pool:
                             # If the message duration exceeds 1 hour, it will be deleted Increase gas
                             if is_in_mempool:
                                 await wallet['rpc_client'].delete_unconfirmed_transactions(wallet['id'])
-                                await self.store.remove_transaction(transaction.trade_id)
+                                await self.store.remove_transaction(transaction.name)
                             # FIXME: remove me after 1.3 wallet bug has been fixed
                             try:
                                 if not is_in_mempool:
