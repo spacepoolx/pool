@@ -1164,6 +1164,10 @@ class Pool:
                             self.log.info(f"Not confirmed. In mempool? {is_in_mempool}")
                             # If the message duration exceeds 1 hour, it will be deleted Increase gas
                             if is_in_mempool:
+                                create_time = int(transaction.created_at_time)
+                                self.log.info(
+                                    f"Test create time {create_time}, nad cur time {int(time.time())}"
+                                )
                                 await wallet['rpc_client'].delete_unconfirmed_transactions(wallet['id'])
                                 await self.store.remove_transaction(transaction.name)
                             # FIXME: remove me after 1.3 wallet bug has been fixed
